@@ -1,0 +1,326 @@
+"""
+NumPy Multiple Linear Regression GD
+
+Assembled from your step-by-step solutions.
+"""
+
+import numpy as np
+
+# Step 1 - shuffle_xy
+import numpy as np
+
+def shuffle_xy(X, y, seed=42):
+    """Randomly permute feature rows and targets together.
+
+    Parameters
+    ----------
+    X : np.ndarray, shape (n, d)
+        Feature matrix.
+    y : np.ndarray, shape (n,)
+        Target vector.
+    seed : int, optional
+        RNG seed for reproducibility (default 42).
+
+    Returns
+    -------
+    X_shuffled : np.ndarray, shape (n, d)
+    y_shuffled : np.ndarray, shape (n,)
+    """
+    # TODO: Return (X, y) under one shared seeded row permutation
+    n, d = X.shape
+    rand = np.random.default_rng(seed)
+    idx = rand.permutation(n)
+
+    X_shuf = X[idx,:]
+    y_shuf = y[idx]
+    return X_shuf, y_shuf
+
+# Step 2 - split_train_val_test
+def split_train_val_test(X, y, train_frac=0.6, val_frac=0.2):
+    # TODO: Slice already-shuffled data into contiguous train/val/test partitions...
+    n = X.shape[0]
+
+    train_sample = int(n*train_frac)
+    val_sample = int(n*val_frac)
+    end_val = train_sample + val_sample
+
+    X_train = X[:train_sample]
+    y_train = y[:train_sample]
+    X_val = X[train_sample:end_val]
+    y_val = y[train_sample:end_val]
+    X_test = X[end_val:]
+    y_test = y[end_val:]
+    return X_train, y_train, X_val, y_val, X_test, y_test
+    pass
+
+# Step 3 - compute_feature_stats
+def compute_feature_stats(X):
+    # TODO: Compute per-feature mean and std; replace std of 0 with 1
+    mean = np.mean(X, axis=0)
+    std = np.std(X, axis=0)
+    for i in range (len(std)):
+        if std[i] == 0:
+            std[i] = 1.0
+    return mean, std
+
+# Step 4 - standardize_features
+def standardize_features(X, mean, std):
+    # TODO: Apply z-score normalization using precomputed training mean and std.
+    return (X - mean)/std
+    pass
+
+# Step 5 - add_bias_column
+def add_bias_column(X):
+    # TODO: Prepend a column of ones to feature matrix X
+    n, d = X.shape
+    bias = np.ones((n, 1), dtype=float)
+    return np.concatenate((bias, X), axis=1)
+    pass
+
+# Step 6 - prepare_design_matrix
+def prepare_design_matrix(X, mean, std):
+    # TODO: Standardize features then add the bias column to form the design matrix.
+    X_new = standardize_features(X, mean, std)
+    return add_bias_column(X_new)
+    pass
+
+# Step 7 - predict_linear
+def predict_linear(X, weights):
+    """Compute linear predictions y_hat = X @ weights.
+
+    Args:
+        X: Design matrix of shape (n, d_in), often including a bias column.
+        weights: Weight vector of shape (d_in,).
+
+    Returns:
+        Predicted targets of shape (n,).
+    """
+    # TODO: Return the predicted target vector from X and weights
+    y_hat = X @ weights
+    return y_hat
+    pass
+
+# Step 8 - mse_loss
+def mse_loss(y_true, y_pred):
+    # TODO: Return the average of squared residuals as a scalar float.
+    y_l = y_true - y_pred 
+    return np.sum(y_l**2)/len(y_l)
+    pass
+
+# Step 9 - mse_gradient
+def mse_gradient(X, y_true, y_pred):
+    # TODO: Return the analytic MSE gradient w.r.t. weights: (2/n) X^T (y_pred - y_true)
+    n = X.shape[0]
+    return (2/n) * (X.T @ (y_pred - y_true))
+    pass
+
+# Step 10 - normal_equation
+def normal_equation(X, y):
+    return np.linalg.pinv(X) @ y
+
+# Step 11 - initialize_weights
+def initialize_weights(n_features, seed=None):
+    # TODO: Return (n_features,) weights sampled from N(0, 0.01)
+    rng = np.random.RandomState(seed=seed)
+    w = rng.normal(loc=0, scale=0.01, size=(n_features))
+    return w
+    pass
+
+# Step 12 - gd_step
+def gd_step(X, y, weights, lr):
+    """Run one full-batch gradient descent update on the weights.
+
+    Args:
+        X: Design matrix of shape (n, d_in).
+        y: Target vector of shape (n,).
+        weights: Current weight vector of shape (d_in,).
+        lr: Learning rate (float).
+
+    Returns:
+        Updated weight vector of shape (d_in,).
+    """
+    # TODO: return the updated weight vector after one MSE gradient step
+    y_pred = predict_linear(X, weights)
+    return weights - lr * mse_gradient(X, y, y_pred)
+    pass
+
+# Step 13 - epoch_train_val_losses
+def epoch_train_val_losses(X_train, y_train, X_val, y_val, weights):
+    """Evaluate MSE on train and validation sets for the current weights.
+
+    Args:
+        X_train: Training design matrix of shape (n_tr, d_in).
+        y_train: Training targets of shape (n_tr,).
+        X_val: Validation design matrix of shape (n_va, d_in).
+        y_val: Validation targets of shape (n_va,).
+        weights: Weight vector of shape (d_in,).
+
+    Returns:
+        (train_loss, val_loss) as plain floats.
+    """
+    # TODO: return the pair (train_loss, val_loss) as MSE floats
+    y_train_pred = predict_linear(X_train, weights)
+    y_val_pred = predict_linear(X_val, weights)
+    return (mse_loss(y_train, y_train_pred), mse_loss(y_val, y_val_pred))
+    pass
+
+# Step 14 - update_early_stop_state
+def update_early_stop_state(val_loss, best_val_loss, wait, weights, best_weights, patience):
+    # TODO: Update best weights and patience counter; signal stop when val loss stalls...
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        best_weights = weights.copy()
+        wait = 0
+        stop = False
+    else:
+        wait += 1
+        stop = wait >= patience
+    return best_val_loss, wait, best_weights, stop
+    pass
+
+# Step 15 - init_training_state
+def init_training_state(n_features, seed=None):
+    # TODO: Build the initial training-state dictionary for the GD epoch loop.
+    init_weights = initialize_weights(n_features, seed)
+    return {'weights': init_weights, 
+            'best_weights': init_weights.copy(), 
+            'best_val_loss': np.inf, 
+            'wait': 0, 
+            'train_losses': [], 
+            'val_losses': [], 
+            'stopped': False}
+    pass
+
+# Step 16 - run_one_epoch
+def run_one_epoch(state, X_train, y_train, X_val, y_val, lr, patience):
+    """Perform one GD step, log losses, and refresh early-stopping on state.
+
+    Args:
+        state: Dict with keys weights, best_weights, best_val_loss, wait,
+            stopped, train_losses, val_losses.
+        X_train: Training design matrix of shape (n_tr, d_in).
+        y_train: Training targets of shape (n_tr,).
+        X_val: Validation design matrix of shape (n_va, d_in).
+        y_val: Validation targets of shape (n_va,).
+        lr: Learning rate (float).
+        patience: Early-stopping patience (int).
+
+    Returns:
+        Updated state dict.
+    """
+    # TODO: Take one GD step, log train/val losses, refresh early-stopping fields...
+    weights_new = gd_step(X_train, y_train, state['weights'], lr)
+    train_loss_new, val_loss_new = epoch_train_val_losses(X_train, y_train, X_val, y_val, weights_new)
+    best_val_loss, wait, best_weights, stop = update_early_stop_state(val_loss_new, 
+                                                                    state['best_val_loss'],
+                                                                    state['wait'],
+                                                                    weights_new,
+                                                                    state['best_weights'],
+                                                                    patience)
+    state['weights'] = weights_new
+    state['best_weights'] = best_weights
+    state['best_val_loss'] = best_val_loss
+    state['wait'] = wait
+    state['stopped'] = stop
+    state['train_losses'].append(train_loss_new)
+    state['val_losses'].append(val_loss_new)
+    return state
+    pass
+
+# Step 17 - train_batch_gd
+def train_batch_gd(X_train, y_train, X_val, y_val, lr, epochs, patience, seed=None):
+    # TODO: Train weights with full-batch GD for up to epochs, with early stopping.
+    state = init_training_state(X_train.shape[1], seed)
+    for _ in range (epochs):
+        state = run_one_epoch(state, X_train, y_train, X_val, y_val, lr, patience)
+        if state['stopped'] == True:
+            break
+    return state['best_weights'], state['train_losses'], state['val_losses']
+    pass
+
+# Step 18 - mean_absolute_error
+def mean_absolute_error(y_true, y_pred):
+    # TODO: Compute the mean absolute error between true targets and predictions
+    return np.sum(np.abs(y_true - y_pred))/len(y_true)
+
+# Step 19 - root_mean_squared_error
+def root_mean_squared_error(y_true, y_pred):
+    # TODO: Return the root mean squared error between y_true and y_pred.
+    y_l = y_true - y_pred
+    return np.sqrt(np.sum((y_true - y_pred)**2)/len(y_l))
+
+# Step 20 - r_squared
+def r_squared(y_true, y_pred):
+    # TODO: Compute the coefficient of determination R^2.
+    SS_res = np.sum((y_true - y_pred)**2)
+    SS_tot = np.sum((y_true - np.mean(y_true))**2)
+    if SS_tot != 0:
+        R2 = 1.0 - SS_res/SS_tot
+    else:
+        R2 = np.nan
+    return R2
+
+# Step 21 - evaluate_regression
+def evaluate_regression(y_true, y_pred):
+    # TODO: Bundle MAE, RMSE, and R^2 into one metrics dictionary for test-set reporting.
+    return {'mae': mean_absolute_error(y_true, y_pred),
+            'rmse': root_mean_squared_error(y_true, y_pred),
+            'r2': r_squared(y_true, y_pred)}
+
+# Step 22 - learning_curve_data
+def learning_curve_data(train_losses, val_losses):
+    # TODO: Return epoch indices and loss series for external plotting...
+    epochs = [i + 1 for i in range (len(train_losses))]
+    return epochs, [float(x) for x in train_losses], [float(x) for x in val_losses]
+
+# Step 23 - weights_l2_distance
+def weights_l2_distance(w_gd, w_closed):
+    # TODO: Compute the L2 distance between two weight vectors
+    return np.linalg.norm((w_gd - w_closed), ord=2)
+
+# Step 24 - create_lr_model
+def create_lr_model(learning_rate=0.01, epochs=1000, patience=50, seed=0):
+    # TODO: Build the initial LinearRegressionGD-style model dictionary...
+    return {
+        'learning_rate': learning_rate,
+        'epochs': epochs,
+        'patience': patience,
+        'seed': seed,
+        'weights': None,
+        'normal_weights': None,
+        'mean': None,
+        'std': None,
+        'train_losses':[],
+        'val_losses': []
+    }
+
+# Step 25 - fit_lr_model
+def fit_lr_model(model, X_train, y_train, X_val, y_val):
+    # TODO: Fit model with train stats, design matrices, GD, and normal eq
+    mean, std = compute_feature_stats(X_train)
+    X_train_design = prepare_design_matrix(X_train, mean, std)
+    X_val_design = prepare_design_matrix(X_val, mean, std)
+
+    model['normal_weights'] = normal_equation(X_train_design, y_train)
+    
+    model['mean'], model['std'] = mean, std
+    model['weights'], model['train_losses'], model['val_losses'] = train_batch_gd(X_train_design, y_train, X_val_design, y_val, model['learning_rate'], model['epochs'], model['patience'], model.get('seed'))
+    return model
+
+# Step 26 - predict_lr_model
+def predict_lr_model(model, X):
+    # TODO: Return predicted targets for raw X using the fitted model.
+    X_new = prepare_design_matrix(X, model['mean'], model['std'])
+    return predict_linear(X_new, model['weights'])
+
+# Step 27 - score_lr_model
+def score_lr_model(model, X, y):
+    # TODO: Predict on raw features and return MAE, RMSE, and R^2 metrics.
+    y_pred = predict_lr_model(model, X)
+    return evaluate_regression(y, y_pred)
+
+# Step 28 - compare_with_normal_equation
+def compare_with_normal_equation(model):
+    # TODO: Return the L2 distance between GD and normal-equation weights.
+    return weights_l2_distance(model['weights'], model['normal_weights'])
+
